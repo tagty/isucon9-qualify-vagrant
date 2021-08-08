@@ -1,0 +1,10 @@
+initial-data
+webapp/public/upload
+webapp/sql/initial.sql
+webapp/nodejs/node_modules
+webapp/perl/local/cache
+webapp/perl/local/lib/perl5
+webapp/php/vendor
+webapp/python/venv
+webapp/python/venv/lib/python3.7
+webapp/ruby/.bundle
