@@ -86,9 +86,9 @@ type User struct {
 }
 
 type UserSimple struct {
-	ID           int64  `json:"id"`
-	AccountName  string `json:"account_name"`
-	NumSellItems int    `json:"num_sell_items"`
+	ID           int64  `json:"id" db:"id"`
+	AccountName  string `json:"account_name" db:"account_name"`
+	NumSellItems int    `json:"num_sell_items" db:"num_sell_items"`
 }
 
 type Item struct {
@@ -135,6 +135,11 @@ type ItemDetail struct {
 	TransactionEvidenceStatus string      `json:"transaction_evidence_status,omitempty"`
 	ShippingStatus            string      `json:"shipping_status,omitempty"`
 	CreatedAt                 int64       `json:"created_at"`
+}
+
+type ItemSeller struct {
+	Item   *Item       `json:"item" db:"item"`
+	Seller *UserSimple `json:"seller" db:"seller"`
 }
 
 type TransactionEvidence struct {
@@ -550,11 +555,12 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	items := []Item{}
+	// items := []Item{}
+	itemSellers := []ItemSeller{}
 	if itemID > 0 && createdAt > 0 {
 		// paging
-		err := dbx.Select(&items,
-			"SELECT * FROM `items` WHERE `status` IN (?,?) AND (`created_at` < ?  OR (`created_at` <= ? AND `id` < ?)) ORDER BY `created_at` DESC, `id` DESC LIMIT ?",
+		err := dbx.Select(&itemSellers,
+			"SELECT `item`.`id` AS `item.id`, `item`.`seller_id` AS `item.seller_id`, `item`.`status` AS `item.status`, `item`.`name` AS `item.name`, `item`.`price` AS `item.price`, `item`.`image_name` AS `item.image_name`, `item`.`category_id` AS `item.category_id`, `item`.`created_at` AS `item.created_at`, `seller`.`id` AS `seller.id`, `seller`.`account_name` AS `seller.account_name`, `seller`.`num_sell_items` AS `seller.num_sell_items` FROM `items` AS `item` JOIN `users` AS `seller` ON `item`.`seller_id` = `seller`.`id` WHERE `item`.`status` IN (?,?) AND (`item`.`created_at` < ?  OR (`item`.`created_at` <= ? AND `item`.`id` < ?)) ORDER BY `item`.`created_at` DESC, `item`.`id` DESC LIMIT ?",
 			ItemStatusOnSale,
 			ItemStatusSoldOut,
 			time.Unix(createdAt, 0),
@@ -569,8 +575,8 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// 1st page
-		err := dbx.Select(&items,
-			"SELECT * FROM `items` WHERE `status` IN (?,?) ORDER BY `created_at` DESC, `id` DESC LIMIT ?",
+		err := dbx.Select(&itemSellers,
+			"SELECT `item`.`id` AS `item.id`, `item`.`seller_id` AS `item.seller_id`, `item`.`status` AS `item.status`, `item`.`name` AS `item.name`, `item`.`price` AS `item.price`, `item`.`image_name` AS `item.image_name`, `item`.`category_id` AS `item.category_id`, `item`.`created_at` AS `item.created_at`, `seller`.`id` AS `seller.id`, `seller`.`account_name` AS `seller.account_name`, `seller`.`num_sell_items` AS `seller.num_sell_items` FROM `items` AS `item` JOIN `users` AS `seller` ON `item`.`seller_id` = `seller`.`id` WHERE `item`.`status` IN (?,?) ORDER BY `item`.`created_at` DESC, `item`.`id` DESC LIMIT ?",
 			ItemStatusOnSale,
 			ItemStatusSoldOut,
 			ItemsPerPage+1,
@@ -583,28 +589,29 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	itemSimples := []ItemSimple{}
-	for _, item := range items {
-		seller, err := getUserSimpleByID(dbx, item.SellerID)
-		if err != nil {
-			outputErrorMsg(w, http.StatusNotFound, "seller not found")
-			return
-		}
-		category, err := getCategoryByID(dbx, item.CategoryID)
+	for _, itemSeller := range itemSellers {
+		// seller, err := getUserSimpleByID(dbx, itemSeller.Item.SellerID)
+		// if err != nil {
+		// 	outputErrorMsg(w, http.StatusNotFound, "seller not found")
+		// 	return
+		// }
+		category, err := getCategoryByID(dbx, itemSeller.Item.CategoryID)
 		if err != nil {
 			outputErrorMsg(w, http.StatusNotFound, "category not found")
 			return
 		}
 		itemSimples = append(itemSimples, ItemSimple{
-			ID:         item.ID,
-			SellerID:   item.SellerID,
-			Seller:     &seller,
-			Status:     item.Status,
-			Name:       item.Name,
-			Price:      item.Price,
-			ImageURL:   getImageURL(item.ImageName),
-			CategoryID: item.CategoryID,
+			ID:       itemSeller.Item.ID,
+			SellerID: itemSeller.Item.SellerID,
+			// Seller:     &seller,
+			Seller:     itemSeller.Seller,
+			Status:     itemSeller.Item.Status,
+			Name:       itemSeller.Item.Name,
+			Price:      itemSeller.Item.Price,
+			ImageURL:   getImageURL(itemSeller.Item.ImageName),
+			CategoryID: itemSeller.Item.CategoryID,
 			Category:   &category,
-			CreatedAt:  item.CreatedAt.Unix(),
+			CreatedAt:  itemSeller.Item.CreatedAt.Unix(),
 		})
 	}
 
