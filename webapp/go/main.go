@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"time"
 
+	_ "net/http/pprof"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -292,6 +294,10 @@ func patPost(path string, f func(w http.ResponseWriter, r *http.Request)) (*pat.
 }
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	app, err = newrelic.NewApplication(
 		newrelic.ConfigAppName("isucon9-qualify-vagrant"),
 		newrelic.ConfigLicense("a072d91ece9cbe8d7204ed41b3f061f235ab6818"),
