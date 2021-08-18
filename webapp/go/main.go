@@ -582,6 +582,13 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	sellerIDs := []int64{}
+	for _, item := range items {
+		sellerIDs = append(sellerIDs, item.SellerID)
+	}
+	sellers := []UserSimple{}
+	_ = dbx.Select(&sellers, "SElECT id, account_name, num_sell_items FROM users WHERE id IN (?)", sellerIDs)
+
 	categories := []Category{
 		{1, 0, "ソファー", ""},
 		{2, 1, "一人掛けソファー", "ソファー"},
@@ -630,11 +637,24 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 
 	itemSimples := []ItemSimple{}
 	for _, item := range items {
-		seller, err := getUserSimpleByID(dbx, item.SellerID)
-		if err != nil {
-			outputErrorMsg(w, http.StatusNotFound, "seller not found")
-			return
+		// seller, err := getUserSimpleByID(dbx, item.SellerID)
+		// if err != nil {
+		// 	outputErrorMsg(w, http.StatusNotFound, "seller not found")
+		// 	return
+		// }
+		var seller UserSimple
+		for _, s := range sellers {
+			if s.ID == item.SellerID {
+				seller = s
+				break
+			}
 		}
+
+		// category, err := getCategoryByID(dbx, item.CategoryID)
+		// if err != nil {
+		// 	outputErrorMsg(w, http.StatusNotFound, "category not found")
+		// 	return
+		// }
 		var category Category
 		for _, c := range categories {
 			if c.ID == item.CategoryID {
@@ -642,11 +662,7 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		// category, err := getCategoryByID(dbx, item.CategoryID)
-		// if err != nil {
-		// 	outputErrorMsg(w, http.StatusNotFound, "category not found")
-		// 	return
-		// }
+
 		itemSimples = append(itemSimples, ItemSimple{
 			ID:         item.ID,
 			SellerID:   item.SellerID,
